@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     while (1) {
         static struct option long_options[] =
           {
-            {"help",  no_argument,       0, 0 },
+            {"help",  no_argument,       0, '?' },
             {"port",  required_argument, 0, 'p'},
             {"hex" ,  required_argument, 0, 'h'},
             {0, 0, 0, 0}
@@ -67,7 +67,10 @@ int main(int argc, char **argv) {
             break;
 
           case '?':
-            /* getopt_long already printed an error message. */
+            printf("\nUsage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
+			printf("  --port <com>\t\t:: Use desinated port <com>\n");
+			printf("  --hex <file_name>\t:: Load <file_name>\n");
+			return 0;
             break;
 
           default:
