@@ -64,7 +64,7 @@ int RS_SetCommMask(int comport_number,DWORD dwStoredFlags);
 int RS_WaitCommEvent(int comport_number,DWORD* dwCommEvent,LPOVERLAPPED lpOverlapped);
 int RS_GetCommModemStatus(int comport_number,DWORD* dwModemStatus);
 int RS_GetCommState(int comport_number,DCB* dcb);
-int RS_GetCommStatus(int comport_number,LPCOMMPROP ss);
+int RS_GetCommStatus(int comport_number,LPDWORD lpErrors, LPCOMSTAT lpStat);
 // int RS_GetCommStatus(int comport_number);
 
 int RS232_OpenComport(int, int, const char *);

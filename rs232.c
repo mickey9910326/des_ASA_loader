@@ -682,7 +682,7 @@ int RS_SetCommMask(int comport_number,DWORD dwStoredFlags) {
     return 0;
 }
 int RS_WaitCommEvent(int comport_number,DWORD* dwCommEvent,LPOVERLAPPED lpOverlapped) {
-    if (!WaitCommEvent(Cport[comport_number], dwCommEvent, NULL))
+    if (!WaitCommEvent(Cport[comport_number], dwCommEvent, lpOverlapped))
         return 1;
     else
         return 0;
@@ -699,8 +699,8 @@ int RS_GetCommState(int comport_number,DCB* dcb) {
     else
         return 0;
 }
-int RS_GetCommStatus(int comport_number,LPCOMMPROP ss) {
-    if (!  GetCommProperties(Cport[comport_number], ss) )
+int RS_GetCommStatus(int comport_number,LPDWORD lpErrors, LPCOMSTAT lpStat) {
+    if (!  ClearCommError(Cport[comport_number],lpErrors,lpStat))
         return 1;
     else
         return 0;
