@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <getopt.h>
 
 
 #ifdef _WIN32
@@ -13,7 +14,7 @@
 
 #include "rs232.h"
 
-int CPORT_NR = 7;
+int CPORT_NR = 11;
 int BDRATE = 115200;
 long unsigned int temp;
 char mode[]={'8','N','1',0};
@@ -23,7 +24,57 @@ DWORD dwModemStatus;
 // LPCOMMPROP lpCommProp;
 COMMPROP ss;
 LPDWORD lpModemStat;
-int main() {
+int main(int argc, char **argv) {
+	char tmp_name[25];
+	int chd;
+    char* endptr;
+    while (1) {
+        static struct option long_options[] =
+          {
+            {"help",  no_argument,       0, 0 },
+            {"port",  required_argument, 0, 'p'},
+            {"hex" ,  required_argument, 0, 'h'},
+            {0, 0, 0, 0}
+          };
+        /* getopt_long stores the option index here. */
+        int option_index = 0;
+
+        chd = getopt_long (argc, argv, "p:h:",
+                         long_options, &option_index);
+
+        /* Detect the end of the options. */
+        if (chd == -1)
+          break;
+
+        switch (chd)
+          {
+          case 0:
+            /* If this option set a flag, do nothing else now. */
+            if (long_options[option_index].flag != 0)
+              break;
+            printf ("option %s", long_options[option_index].name);
+            if (optarg)
+              printf (" with arg %s", optarg);
+            printf ("\n");
+            break;
+
+          case 'h':
+		  	strcpy(tmp_name,optarg);
+            break;
+
+          case 'p':
+  			CPORT_NR = (int)strtoimax(optarg,&endptr,10)-1;
+            break;
+
+          case '?':
+            /* getopt_long already printed an error message. */
+            break;
+
+          default:
+            abort ();
+          }
+      }
+
 	unsigned char start[12] = {
 		0xfc,0xfc,0xfc,0xfa,0x01,
 		0x00,0x04,
@@ -35,19 +86,8 @@ int main() {
 	unsigned char length[2] = {0x00,0x10};
 	unsigned char tt_data[265] = {0xfc,0xfc,0xfc,0xfc,0x01};
 	// header (5bytes) -> length (2byte)
-
-
-    if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
-		printf("Can not connect to COM%d\n",CPORT_NR+1);
-        return 0;
-	}
-// 	Sleep(200);
-//
-// 	RS232_disableDTR(CPORT_NR);
-// Sleep(200);
-// 	RS232_disableRTS(CPORT_NR);
-
-    char ch, file_name[25]="Test.hex";
+	char file_name[25];
+	strcpy(file_name,tmp_name);
     FILE *fp;
 
     printf("Enter the name of file you wish to see\n");
@@ -65,7 +105,10 @@ int main() {
     printf("The contents of %s file are :\n", file_name);
     // RS232_SendBuf(CPORT_NR,start,12);
     // Sleep( 100 );
-
+	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
+		printf("Can not connect to COM%d\n",CPORT_NR+1);
+        return 0;
+	}
 
     uint8_t status=1,c;
     uint8_t error=0,line_bytes,line_count;
