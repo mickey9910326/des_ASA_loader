@@ -13,6 +13,8 @@
 
 #include "rs232.h"
 
+char* VERISON = "v2.0";
+
 uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t* chksum);
 void print_hex_data(void* data_p, uint16_t data_count);
 
@@ -24,15 +26,21 @@ int main(int argc, char **argv) {
 
 	char tmp_name[25];
 	int ch;
-    char* endptr;
+	int do_verbose = 0;
+	int do_debug   = 0;
+
+	// handle option argv
+	struct option long_options[] =
+	{
+		{"verbose" , no_argument      , &do_verbose, 1},
+		{"debug"   , no_argument      , &do_debug  , 1},
+		{"version" , no_argument      , NULL       , 'v'},
+		{"help"    , no_argument      , NULL       , '?'},
+		{"port"    , required_argument, NULL       , 'p'},
+		{"hex"     , required_argument, NULL       , 'h'},
+		{0, 0, 0, 0}
+	};
     while (1) {
-        static struct option long_options[] =
-          {
-            {"help",  no_argument,       0, '?' },
-            {"port",  required_argument, 0, 'p'},
-            {"hex" ,  required_argument, 0, 'h'},
-            {0, 0, 0, 0}
-          };
         /* getopt_long stores the option index here. */
         int option_index = 0;
 
@@ -41,66 +49,70 @@ int main(int argc, char **argv) {
 
         /* Detect the end of the options. */
         if (ch == -1)
-          break;
+        	break;
 
         switch (ch) {
-          case 0:
-            /* If this option set a flag, do nothing else now. */
-            if (long_options[option_index].flag != 0)
-              break;
-            printf ("option %s", long_options[option_index].name);
-            if (optarg)
-              printf (" with arg %s", optarg);
-            printf ("\n");
-            break;
+	        case 0:
+				/* If this option set a flag, do nothing else now. */
+				if (long_options[option_index].flag != 0)
+					break;
+				printf ("option %s", long_options[option_index].name);
+				if (optarg)
+					printf (" with arg %s", optarg);
+					printf ("\n");
+		    	break;
 
-          case 'h':
-		  	strcpy(tmp_name,optarg);
-            break;
+	        case 'h':
+				strcpy(tmp_name,optarg);
+		    	break;
 
-          case 'p':
-  			CPORT_NR = (int)strtoimax(optarg,&endptr,10)-1;
-            break;
+	      	case 'p':
+		 		CPORT_NR = (int)strtoimax(optarg,NULL,10)-1;
+		    	break;
 
-          case '?':
-            printf("\nUsage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
-			printf("  --port <com>\t\t:: Use desinated port <com>\n");
-			printf("  --hex <file_name>\t:: Load <file_name>\n");
-			return 0;
-            break;
+			case 'v':
+				printf("des_ASA_loader version is %s \n",VERISON);
+				return 0;
+		        break;
 
-          default:
-            abort ();
-          }
-      }
+	        case '?':
+		        printf("Usage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
+				printf("  --port <com>         Use desinated port <com>\n");
+				printf("  --hex <file_name>    Load <file_name>\n");
+				return 0;
+		        break;
 
+	        default:
+	        	abort ();
+        }
+    }
 
+	// core
 	unsigned char start[12] 	= {0xfc,0xfc,0xfc,0xfa,0x01,0x00,0x04,0x74,0x65,0x73,0x74,0xc0};
     unsigned char end[8] 		= {0xfc,0xfc,0xfc,0xfc,0x01,0x00,0x00,0x00};
 	unsigned char tri_data[265] = {0xfc,0xfc,0xfc,0xfc,0x01};
 	unsigned char chk[12]		= {0xfc,0xfc,0xfc,0xfc,0x01,0x00,0x04,'O','K','!','!','?'};
 	unsigned char get_chk[12]	= {0xfc,0xfc,0xfc,0xfc,0x01};
-
+	uint8_t hex_data[254];
+	uint16_t data_count = 0;
+	uint8_t chksum = 0;
+	DWORD dwCommEvent;
 
 	char file_name[25];
 	strcpy(file_name,tmp_name);
 	FILE *fp;
     fp = fopen(file_name,"rb"); // read binary mode
     if( fp == NULL ) { //error checking
-        perror("Error while opening the file.\n");
+        perror("Cannot find file. Please check the file name.\n");
         exit(EXIT_FAILURE);
     }
-	printf("file_name %s\n", file_name);
-
-	uint8_t hex_data[254];
-	uint16_t data_count = 0;
-	uint8_t chksum = 0;
-	DWORD dwCommEvent;
-
 	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
-		printf("Can not connect to COM%d\n",CPORT_NR+1);
-        return 0;
+		printf("Can not connect to COM %d.\n",CPORT_NR+1);
+		printf("Please check M128 is connected to USB and im program mode.");
+		exit(EXIT_FAILURE);
 	}
+
+	printf("Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
 
 	RS_SetCommMask(CPORT_NR,EV_RXCHAR);
 	RS232_SendBuf(CPORT_NR,start,12);
@@ -123,10 +135,11 @@ int main(int argc, char **argv) {
 		memcpy(tri_data+7,hex_data,data_count);
 		RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
 		Sleep(30);
-
-		print_hex_data(hex_data, data_count);
-		printf("%02X %d", tri_data[6+data_count+1],chksum);
-		printf("--------------------------------------\n");
+		if (do_verbose) {
+			print_hex_data(hex_data, data_count);
+			printf("chksum=%02X\n", chksum);
+			printf("--------------------------------------\n");
+		}
 	} while(data_count==256);
 	RS232_SendBuf(CPORT_NR,end,8);
 	RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
@@ -134,6 +147,7 @@ int main(int argc, char **argv) {
 	if (!strncpy(get_chk,chk,12)) {
 		error = 1;
 	}
+
 	if (error) {
 		printf("WORNING : \n");
 		printf("  Don't press reset bottom in programming!\n");
@@ -141,13 +155,10 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	printf("OAO\n");
     fclose(fp);
-	printf("OAO\n");
 
     return 0;
 }
-
 
 uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t* chksum) {
 	#define DE_START 1
