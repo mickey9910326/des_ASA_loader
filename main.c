@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	int BDRATE = 115200;
 	char mode[]={'8','N','1',0};
 
-	char tmp_name[25];
+	char tmp_name[256];
 	int ch;
 	int do_verbose = 0;
 	int do_debug   = 0;
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
 	uint8_t chksum = 0;
 	DWORD dwCommEvent;
 
-	char file_name[25];
+	char file_name[256];
 	strcpy(file_name,tmp_name);
 	FILE *fp;
     fp = fopen(file_name,"rb"); // read binary mode
