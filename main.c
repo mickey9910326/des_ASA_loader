@@ -118,6 +118,9 @@ int main(int argc, char **argv) {
 	FILE *fp;
     fp = fopen(file_name,"rb"); // read binary mode
     if( fp == NULL ) { //error checking
+		char buffer[256];
+		sprintf(buffer, "User input PATH: %s\n", file_name);
+		perror(buffer);
         perror("Cannot find file. Please check the file name.\n");
         exit(EXIT_FAILURE);
     }
@@ -186,6 +189,8 @@ int main(int argc, char **argv) {
 		printf("  Press the reset bottom and program again.\n");
 		return 0;
 	}
+	
+	printf("Upload %s successful !\n", file_name);
 
     fclose(fp);
 
