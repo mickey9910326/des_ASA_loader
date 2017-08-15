@@ -1,4 +1,4 @@
-// use MinGW ti compile
+// use MinGW to compile
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -13,10 +13,17 @@
 
 #include "rs232.h"
 
+
+#define ROUNDUP_QUOT(a,b) (((a) + (b) - 1) / (b))
+// only work for positive numbers, and take care for overflow
+#define PBSTR "============================================================"
+#define PBWIDTH 60
+
 char* VERISON = "v2.0";
 
 uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t* chksum);
 void print_hex_data(void* data_p, uint16_t data_count);
+void print_progressbar(float percentage);
 
 int main(int argc, char **argv) {
 	uint8_t error = 0;
@@ -28,10 +35,12 @@ int main(int argc, char **argv) {
 	int ch;
 	int do_verbose = 0;
 	int do_debug   = 0;
+	int nouploading   = 0;
 
 	// handle option argv
 	struct option long_options[] =
 	{
+		{"nouploading", no_argument      , &nouploading  , 1},
 		{"verbose" , no_argument      , &do_verbose, 1},
 		{"debug"   , no_argument      , &do_debug  , 1},
 		{"version" , no_argument      , NULL       , 'v'},
@@ -78,7 +87,12 @@ int main(int argc, char **argv) {
 	        case '?':
 		        printf("Usage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
 				printf("  --port <com>         Use desinated port <com>\n");
-				printf("  --hex <file_name>    Load <file_name>\n");
+				printf("  -p <com>             Same as --port <com>\n");
+				printf("  --hex <file_name>    Load file <file_name>\n");
+				printf("  -h <com>             Same as --hex <file_name>\n");
+				printf("  --help               Show this messege\n");
+				printf("  -?                   Same as --help\n");
+				printf("  --verbose            Show external messege for debug usage\n");
 				return 0;
 		        break;
 
@@ -96,6 +110,7 @@ int main(int argc, char **argv) {
 	uint8_t hex_data[254];
 	uint16_t data_count = 0;
 	uint8_t chksum = 0;
+	int32_t filesize;
 	DWORD dwCommEvent;
 
 	char file_name[256];
@@ -106,47 +121,64 @@ int main(int argc, char **argv) {
         perror("Cannot find file. Please check the file name.\n");
         exit(EXIT_FAILURE);
     }
+	fseek(fp, 0L, SEEK_END);
+	filesize = ftell(fp);
+	fseek(fp, 0L, SEEK_SET);
+
+	if(!nouploading)
 	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
 		printf("Can not connect to COM %d.\n",CPORT_NR+1);
 		printf("Please check M128 is connected to USB and im program mode.");
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
-
-	RS_SetCommMask(CPORT_NR,EV_RXCHAR);
-	RS232_SendBuf(CPORT_NR,start,12);
-	Sleep(100);
-	RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
-
-	RS232_PollComport(CPORT_NR,get_chk,12);
-	if (!strncpy(get_chk,chk,12)) {
-		error = 1;
+	if(!nouploading){
+		printf("Try to connect ASA_M128 with COM %d ...\n", CPORT_NR+1);
+		RS_SetCommMask(CPORT_NR,EV_RXCHAR);
+		RS232_SendBuf(CPORT_NR,start,12);
+		Sleep(100);
+		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+		RS232_PollComport(CPORT_NR,get_chk,12);
+		printf("Connected success! Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
+		if (!strncpy(get_chk,chk,12)) {
+			error = 1;
+		}
+		if (error) {
+			printf("plz press reset bottom, and check mode is program mode\n");
+			return 0;
+		}
 	}
-	if (error) {
-		printf("plz press reset bottom, and check mode is program mode\n");
-		return 0;
-	}
+
+	int totaltimes = ROUNDUP_QUOT(filesize,45*16);
+	int times = 0;
 	do {
+		print_progressbar((float)times/(float)totaltimes);
+		times++;
 		parse_hex_data_iter(fp, hex_data, &data_count, &chksum);
 		tri_data[5] = data_count/256;
 		tri_data[6] = data_count%256;
         tri_data[6+data_count+1] = chksum;
-		memcpy(tri_data+7,hex_data,data_count);
-		RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
-		Sleep(30);
+		if(!nouploading) {
+			memcpy(tri_data+7,hex_data,data_count);
+			RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
+			Sleep(30);
+		}
 		if (do_verbose) {
 			print_hex_data(hex_data, data_count);
 			printf("chksum=%02X\n", chksum);
 			printf("--------------------------------------\n");
 		}
 	} while(data_count==256);
-	RS232_SendBuf(CPORT_NR,end,8);
-	RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
-	RS232_PollComport(CPORT_NR,get_chk,12);
-	if (!strncpy(get_chk,chk,12)) {
-		error = 1;
+	print_progressbar((float)times/(float)totaltimes);
+	if(!nouploading){
+		RS232_SendBuf(CPORT_NR,end,8);
+		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+		RS232_PollComport(CPORT_NR,get_chk,12);
+		if (!strncpy(get_chk,chk,12)) {
+			error = 1;
+		}
 	}
+
 
 	if (error) {
 		printf("WORNING : \n");
@@ -175,9 +207,6 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
 	static uint8_t line_index;
 	uint8_t res = 0;
 	uint8_t error = 0;
-	// printf("in_pos%lld\n", position);
-	// char chk = fseek(fp,position,SEEK_SET);
-	// printf("chk = %d\n",chk );
 	*data_num = 0;
 	*chksum = 0;
 
@@ -229,7 +258,6 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
 					status = DE_CHKSUM;
 					break;
 				}
-				// printf("st = %d\n",status);
 
             case DE_CHKSUM:
                 fscanf(fp,"%02X", &int_data);
@@ -252,4 +280,12 @@ void print_hex_data(void* data_p, uint16_t data_count) {
 			printf("\n");
 		}
 	}
+}
+
+void print_progressbar(float percentage) {
+	int val = (int) (percentage * 100);
+    int lpad = (int) (percentage * PBWIDTH);
+    int rpad = PBWIDTH - lpad;
+    printf ("\r [%.*s%*s] %3d%%", lpad, PBSTR, rpad, "", val);
+	fflush(stdout);
 }
