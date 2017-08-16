@@ -17,6 +17,7 @@
 #define ROUNDUP_QUOT(a,b) (((a) + (b) - 1) / (b))
 // only work for positive numbers, and take care for overflow
 #define PBSTR "============================================================"
+#define PBSTR2 "                                                            "
 #define PBWIDTH 60
 
 char* VERISON = "v2.0";
@@ -24,6 +25,31 @@ char* VERISON = "v2.0";
 uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t* chksum);
 void print_hex_data(void* data_p, uint16_t data_count);
 void print_progressbar(float percentage);
+
+#ifdef _WIN32
+
+// Color available flag (global variable)
+int is_use_color = 0;
+
+// hAndle and Console setting
+HANDLE hConsole;
+WORD saved_attributes;
+
+// Used for set_cur_color() function
+#define CONSOLE_FG_COLOR_RED	(FOREGROUND_RED)
+#define CONSOLE_FG_COLOR_BLUE	(FOREGROUND_BLUE)
+#define CONSOLE_FG_COLOR_GREEN	(FOREGROUND_GREEN)
+#define CONSOLE_FG_COLOR_INST	(FOREGROUND_INTENSITY)
+
+#define CONSOLE_BG_COLOR_RED	(BACKGROUND_RED)
+#define CONSOLE_BG_COLOR_BLUE	(BACKGROUND_BLUE)
+#define CONSOLE_BG_COLOR_GREEN	(BACKGROUND_GREEN)
+#define CONSOLE_BG_COLOR_INST	(BACKGROUND_INTENSITY)
+
+// Setup current Text paint color
+void set_cur_color(WORD fg_color, WORD bg_color);
+void restore_cur_color();
+#endif
 
 int main(int argc, char **argv) {
 	uint8_t error = 0;
@@ -37,10 +63,22 @@ int main(int argc, char **argv) {
 	int do_debug   = 0;
 	int nouploading   = 0;
 
+#ifdef _WIN32
+	// Get console handle and record origin property
+	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+	/* Save current attributes */
+  	GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+  	saved_attributes = consoleInfo.wAttributes;
+#endif
+
 	// handle option argv
 	struct option long_options[] =
 	{
-		{"nouploading", no_argument      , &nouploading  , 1},
+#ifdef _WIN32
+        {"color"    , no_argument     , &is_use_color, 1},
+#endif
+		{"nouploading", no_argument   , &nouploading  , 1},
 		{"verbose" , no_argument      , &do_verbose, 1},
 		{"debug"   , no_argument      , &do_debug  , 1},
 		{"version" , no_argument      , NULL       , 'v'},
@@ -85,7 +123,9 @@ int main(int argc, char **argv) {
 		        break;
 
 	        case '?':
+				set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
 		        printf("Usage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
+				restore_cur_color();
 				printf("  --port <com>         Use desinated port <com>\n");
 				printf("  -p <com>             Same as --port <com>\n");
 				printf("  --hex <file_name>    Load file <file_name>\n");
@@ -118,7 +158,13 @@ int main(int argc, char **argv) {
 	FILE *fp;
     fp = fopen(file_name,"rb"); // read binary mode
     if( fp == NULL ) { //error checking
+		char buffer[256];
+		set_cur_color(CONSOLE_FG_COLOR_GREEN, CONSOLE_BG_COLOR_BLUE);
+		sprintf(buffer, "User input PATH: %s\n", file_name);
+		perror(buffer);
+		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
         perror("Cannot find file. Please check the file name.\n");
+		restore_cur_color();
         exit(EXIT_FAILURE);
     }
 	fseek(fp, 0L, SEEK_END);
@@ -127,8 +173,10 @@ int main(int argc, char **argv) {
 
 	if(!nouploading)
 	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
+		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
 		printf("Can not connect to COM %d.\n",CPORT_NR+1);
 		printf("Please check M128 is connected to USB and im program mode.");
+		restore_cur_color();
 		exit(EXIT_FAILURE);
 	}
 
@@ -139,12 +187,31 @@ int main(int argc, char **argv) {
 		Sleep(100);
 		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
 		RS232_PollComport(CPORT_NR,get_chk,12);
+
+
+#ifndef _WIN32
 		printf("Connected success! Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
+#else
+		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
+		printf("Connected success! Start uploading ");
+		set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
+		printf("%s", file_name);
+		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
+		printf(" to ");
+		set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
+		printf("COM %d", CPORT_NR+1);
+		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
+		printf(" !\n\n");
+		restore_cur_color();
+#endif
+
 		if (!strncpy(get_chk,chk,12)) {
 			error = 1;
 		}
 		if (error) {
+			set_cur_color(CONSOLE_FG_COLOR_RED, 0);
 			printf("plz press reset bottom, and check mode is program mode\n");
+			restore_cur_color();
 			return 0;
 		}
 	}
@@ -181,12 +248,21 @@ int main(int argc, char **argv) {
 
 
 	if (error) {
+		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
 		printf("WORNING : \n");
+		set_cur_color(CONSOLE_BG_COLOR_BLUE, 0);
 		printf("  Don't press reset bottom in programming!\n");
 		printf("  Press the reset bottom and program again.\n");
+		restore_cur_color();
 		return 0;
 	}
-
+	set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
+	printf("\n\nUpload ");
+	set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
+	printf("%s", file_name);
+	set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
+	printf(" successful !\n");
+	restore_cur_color();
     fclose(fp);
 
     return 0;
@@ -274,18 +350,44 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
 }
 
 void print_hex_data(void* data_p, uint16_t data_count) {
+	set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
 	for (uint16_t j = 0; j < data_count; j++) {
 		printf("%02X ",((uint8_t*)data_p)[j]);
 		if ((j+1)%16==0) {
 			printf("\n");
 		}
 	}
+	restore_cur_color();
 }
 
 void print_progressbar(float percentage) {
 	int val = (int) (percentage * 100);
     int lpad = (int) (percentage * PBWIDTH);
     int rpad = PBWIDTH - lpad;
-    printf ("\r [%.*s%*s] %3d%%", lpad, PBSTR, rpad, "", val);
+
+	printf("\r [");
+	set_cur_color(0, CONSOLE_BG_COLOR_GREEN | CONSOLE_FG_COLOR_INST);
+	if(!is_use_color)
+		printf("%.*s", lpad, PBSTR);
+	else
+		printf("%.*s", lpad, PBSTR2);
+	set_cur_color(0, CONSOLE_BG_COLOR_BLUE	| CONSOLE_BG_COLOR_INST);
+	printf("%*s", rpad, "");
+	restore_cur_color();
+	printf("]%3d%%", val);
 	fflush(stdout);
 }
+
+#ifdef _WIN32
+
+void set_cur_color(WORD fg_color, WORD bg_color) {
+	if(!is_use_color) return;
+	SetConsoleTextAttribute(hConsole, fg_color | bg_color);
+}
+
+void restore_cur_color() {
+	if(!is_use_color) return;
+	SetConsoleTextAttribute(hConsole, saved_attributes);
+}
+
+#endif
