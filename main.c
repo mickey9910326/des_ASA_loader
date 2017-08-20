@@ -20,7 +20,7 @@
 #define PBSTR2 "                                                            "
 #define PBWIDTH 60
 
-char* VERISON = "v2.0";
+#define VERISON "v2.3"
 
 uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t* chksum);
 void print_hex_data(void* data_p, uint16_t data_count);
@@ -118,13 +118,13 @@ int main(int argc, char **argv) {
 		    	break;
 
 			case 'v':
-				printf("des_ASA_loader version is %s \n",VERISON);
+				printf("cmd_ASA_loader version is %s \n",VERISON);
 				return 0;
 		        break;
 
 	        case '?':
 				set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
-		        printf("Usage: des_ASA_loader [--port <com>] [--hex <file_name>]\n");
+		        printf("Usage: cmd_ASA_loader [--port <com>] [--hex <file_name>]\n");
 				restore_cur_color();
 				printf("  --port <com>         Use desinated port <com>\n");
 				printf("  -p <com>             Same as --port <com>\n");

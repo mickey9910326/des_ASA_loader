@@ -2,7 +2,7 @@
 
 - - -
 ## Usage  
-` des_ASA_loader [--port <com>] [--hex <file_name>]  `  
+` cmd_ASA_loader [--port <com>] [--hex <file_name>] [Options...]`  
 
 | Options    |  Description    |
 | :------------- | :------------- |
@@ -17,7 +17,7 @@
 
 - - -
 ## 中文說明
-指令： ` des_ASA_loader [--port <com>] [--hex <file_name>]  `  
+指令： ` cmd_ASA_loader [--port <com>] [--hex <file_name>] [Options...]`  
 
 | Options    |  Description    |
 | :------------- | :------------- |
@@ -32,7 +32,7 @@
 
 - - -
 ## example  
-`des_ASA_loader --port 8 --hex Test.hex`
+`cmd_ASA_loader --port 8 --hex Test.hex`
 
 連結到 USB COM 8，燒錄Test.hex到ASA_M128
 
