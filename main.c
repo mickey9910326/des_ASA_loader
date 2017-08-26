@@ -11,7 +11,7 @@
 #include <unistd.h>
 #endif
 
-#include "rs232.h"
+#include "ftd2xx.h"
 
 
 #define ROUNDUP_QUOT(a,b) (((a) + (b) - 1) / (b))
@@ -153,6 +153,10 @@ int main(int argc, char **argv) {
 	int32_t filesize;
 	DWORD dwCommEvent;
 
+	FT_STATUS ftStatus;
+    FT_HANDLE ftHandle;
+
+
 	char file_name[256];
 	strcpy(file_name,tmp_name);
 	FILE *fp;
@@ -172,21 +176,29 @@ int main(int argc, char **argv) {
 	fseek(fp, 0L, SEEK_SET);
 
 	if(!nouploading)
-	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
+    if ((ftStatus = FT_Open(0,&ftHandle))!=FT_OK) {
 		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
 		printf("Can not connect to COM %d.\n",CPORT_NR+1);
 		printf("Please check M128 is connected to USB and im program mode.");
 		restore_cur_color();
 		exit(EXIT_FAILURE);
-	}
-
+    }
+    FT_SetBaudRate(ftHandle,BDRATE);
+    FT_SetDataCharacteristics(ftHandle,FT_BITS_8,FT_STOP_BITS_1,FT_PARITY_NONE);
+    FT_SetFlowControl(ftHandle,FT_FLOW_NONE,17,19);
+    FT_SetTimeouts(ftHandle,2000,0);
+	uint32_t wb;
 	if(!nouploading){
 		printf("Try to connect ASA_M128 with COM %d ...\n", CPORT_NR+1);
-		RS_SetCommMask(CPORT_NR,EV_RXCHAR);
-		RS232_SendBuf(CPORT_NR,start,12);
+		// RS_SetCommMask(CPORT_NR,EV_RXCHAR);
+		// RS232_SendBuf(CPORT_NR,start,12);
+		FT_SetWaitMask(ftHandle,EV_RXCHAR);
+		FT_Write(ftHandle,start,12,&wb);
 		Sleep(100);
-		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
-		RS232_PollComport(CPORT_NR,get_chk,12);
+		FT_Read(ftHandle,get_chk,12,&wb);
+		// RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+		// FT_WaitOnMask(ftHandle,EV_RXCHAR);
+		// RS232_PollComport(CPORT_NR,get_chk,12);
 
 
 #ifndef _WIN32
@@ -227,7 +239,8 @@ int main(int argc, char **argv) {
         tri_data[6+data_count+1] = chksum;
 		if(!nouploading) {
 			memcpy(tri_data+7,hex_data,data_count);
-			RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
+			// RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
+			FT_Write(ftHandle,tri_data,data_count+8,&wb);
 			Sleep(30);
 		}
 		if (do_verbose) {
@@ -238,9 +251,14 @@ int main(int argc, char **argv) {
 	} while(data_count==256);
 	print_progressbar((float)times/(float)totaltimes);
 	if(!nouploading){
-		RS232_SendBuf(CPORT_NR,end,8);
-		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
-		RS232_PollComport(CPORT_NR,get_chk,12);
+		// RS232_SendBuf(CPORT_NR,end,8);
+		// RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+		// RS232_PollComport(CPORT_NR,get_chk,12);
+		// FT_WaitOnMask(ftHandle,&dwCommEvent);
+		// FT_WaitOnMask(ftHandle,EV_RXCHAR);
+		FT_Write(ftHandle,end,8,&wb);
+		FT_Read(ftHandle,get_chk,12,&wb);
+
 		if (!strncpy(get_chk,chk,12)) {
 			error = 1;
 		}
