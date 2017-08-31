@@ -9,10 +9,10 @@
 #include <Windows.h>
 #else
 #include <unistd.h>
+#include <unistd.h>
 #endif
 
 #include "rs232.h"
-
 
 #define ROUNDUP_QUOT(a,b) (((a) + (b) - 1) / (b))
 // only work for positive numbers, and take care for overflow
@@ -26,14 +26,9 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
 void print_hex_data(void* data_p, uint16_t data_count);
 void print_progressbar(float percentage);
 
+
+
 #ifdef _WIN32
-
-// Color available flag (global variable)
-int is_use_color = 0;
-
-// hAndle and Console setting
-HANDLE hConsole;
-WORD saved_attributes;
 
 // Used for set_cur_color() function
 #define CONSOLE_FG_COLOR_RED	(FOREGROUND_RED)
@@ -46,10 +41,39 @@ WORD saved_attributes;
 #define CONSOLE_BG_COLOR_GREEN	(BACKGROUND_GREEN)
 #define CONSOLE_BG_COLOR_INST	(BACKGROUND_INTENSITY)
 
+// Color available flag (global variable)
+int is_use_color = 0;
+
+// hAndle and Console setting
+HANDLE hConsole;
+WORD saved_attributes;
+
 // Setup current Text paint color
 void set_cur_color(WORD fg_color, WORD bg_color);
 void restore_cur_color();
+
+#else
+
+// Used for set_cur_color() function
+#define CONSOLE_FG_COLOR_RED		0
+#define CONSOLE_FG_COLOR_BLUE		0
+#define CONSOLE_FG_COLOR_GREEN	0
+#define CONSOLE_FG_COLOR_INST		0
+
+#define CONSOLE_BG_COLOR_RED		0
+#define CONSOLE_BG_COLOR_BLUE		0
+#define CONSOLE_BG_COLOR_GREEN	0
+#define CONSOLE_BG_COLOR_INST		0
+
+// Color available flag (global variable)
+int is_use_color = 0;
+
+void set_cur_color() {};
+void restore_cur_color() {};
+
 #endif
+
+void sleep_ms(unsigned long);
 
 int main(int argc, char **argv) {
 	uint8_t error = 0;
@@ -100,27 +124,27 @@ int main(int argc, char **argv) {
 
         switch (ch) {
 	        case 0:
-				/* If this option set a flag, do nothing else now. */
-				if (long_options[option_index].flag != 0)
-					break;
-				printf ("option %s", long_options[option_index].name);
-				if (optarg)
-					printf (" with arg %s", optarg);
-					printf ("\n");
+					/* If this option set a flag, do nothing else now. */
+					if (long_options[option_index].flag != 0)
+						break;
+					printf ("option %s", long_options[option_index].name);
+					if (optarg)
+						printf (" with arg %s", optarg);
+						printf ("\n");
 		    	break;
 
 	        case 'h':
-				strcpy(tmp_name,optarg);
+						strcpy(tmp_name,optarg);
 		    	break;
 
 	      	case 'p':
-		 		CPORT_NR = (int)strtoimax(optarg,NULL,10)-1;
+			 			CPORT_NR = (int)strtoimax(optarg,NULL,10)-1;
 		    	break;
 
-			case 'v':
-				printf("cmd_ASA_loader version is %s \n",VERISON);
-				return 0;
-		        break;
+					case 'v':
+						printf("cmd_ASA_loader version is %s \n",VERISON);
+						return 0;
+			      break;
 
 	        case '?':
 				set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
@@ -143,7 +167,7 @@ int main(int argc, char **argv) {
 
 	// core
 	unsigned char start[12] 	= {0xfc,0xfc,0xfc,0xfa,0x01,0x00,0x04,0x74,0x65,0x73,0x74,0xc0};
-    unsigned char end[8] 		= {0xfc,0xfc,0xfc,0xfc,0x01,0x00,0x00,0x00};
+	unsigned char end[8] 		= {0xfc,0xfc,0xfc,0xfc,0x01,0x00,0x00,0x00};
 	unsigned char tri_data[265] = {0xfc,0xfc,0xfc,0xfc,0x01};
 	unsigned char chk[12]		= {0xfc,0xfc,0xfc,0xfc,0x01,0x00,0x04,'O','K','!','!','?'};
 	unsigned char get_chk[12]	= {0xfc,0xfc,0xfc,0xfc,0x01};
@@ -151,7 +175,9 @@ int main(int argc, char **argv) {
 	uint16_t data_count = 0;
 	uint8_t chksum = 0;
 	int32_t filesize;
+	#ifdef __WIN32
 	DWORD dwCommEvent;
+	#endif
 
 	char file_name[256];
 	strcpy(file_name,tmp_name);
@@ -173,6 +199,9 @@ int main(int argc, char **argv) {
 
 	if(!nouploading)
 	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
+#ifndef _WIN32
+		printf("Error Code : %d\n", errno);
+#endif
 		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
 		printf("Can not connect to COM %d.\n",CPORT_NR+1);
 		printf("Please check M128 is connected to USB and im program mode.");
@@ -182,10 +211,14 @@ int main(int argc, char **argv) {
 
 	if(!nouploading){
 		printf("Try to connect ASA_M128 with COM %d ...\n", CPORT_NR+1);
+#ifdef __WIN32
 		RS_SetCommMask(CPORT_NR,EV_RXCHAR);
+#endif
 		RS232_SendBuf(CPORT_NR,start,12);
-		Sleep(100);
+		sleep_ms(100);
+#ifdef __WIN32
 		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+#endif
 		RS232_PollComport(CPORT_NR,get_chk,12);
 
 
@@ -228,7 +261,7 @@ int main(int argc, char **argv) {
 		if(!nouploading) {
 			memcpy(tri_data+7,hex_data,data_count);
 			RS232_SendBuf(CPORT_NR,tri_data,data_count+8);
-			Sleep(30);
+			sleep_ms(30);
 		}
 		if (do_verbose) {
 			print_hex_data(hex_data, data_count);
@@ -239,7 +272,9 @@ int main(int argc, char **argv) {
 	print_progressbar((float)times/(float)totaltimes);
 	if(!nouploading){
 		RS232_SendBuf(CPORT_NR,end,8);
+#ifdef __WIN32
 		RS_WaitCommEvent(CPORT_NR, &dwCommEvent,NULL);
+#endif
 		RS232_PollComport(CPORT_NR,get_chk,12);
 		if (!strncpy(get_chk,chk,12)) {
 			error = 1;
@@ -376,6 +411,14 @@ void print_progressbar(float percentage) {
 	restore_cur_color();
 	printf("]%3d%%", val);
 	fflush(stdout);
+}
+
+void sleep_ms(unsigned long duration) {
+#ifdef __WIN32
+	Sleep(duration);
+#else
+	usleep(1000*duration);
+#endif
 }
 
 #ifdef _WIN32

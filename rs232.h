@@ -41,7 +41,6 @@ extern "C" {
 #include <string.h>
 
 
-
 #if defined(__linux__) || defined(__FreeBSD__)
 
 #include <termios.h>
@@ -60,12 +59,19 @@ extern "C" {
 
 #endif
 
+#if defined(__linux__) || defined(__FreeBSD__)
+
+
+#else
 int RS_SetCommMask(int comport_number,DWORD dwStoredFlags);
 int RS_WaitCommEvent(int comport_number,DWORD* dwCommEvent,LPOVERLAPPED lpOverlapped);
 int RS_GetCommModemStatus(int comport_number,DWORD* dwModemStatus);
 int RS_GetCommState(int comport_number,DCB* dcb);
 int RS_GetCommStatus(int comport_number,LPDWORD lpErrors, LPCOMSTAT lpStat);
 // int RS_GetCommStatus(int comport_number);
+#endif
+
+
 
 int RS232_OpenComport(int, int, const char *);
 int RS232_PollComport(int, unsigned char *, int);

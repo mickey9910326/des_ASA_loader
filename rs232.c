@@ -193,7 +193,7 @@ http://pubs.opengroup.org/onlinepubs/7908799/xsh/termios.h.html
 
 http://man7.org/linux/man-pages/man3/termios.3.html
 */
-
+  printf("Opening %s\n",comports[comport_number]);
   Cport[comport_number] = open(comports[comport_number], O_RDWR | O_NOCTTY | O_NDELAY);
   if(Cport[comport_number]==-1)
   {
@@ -676,6 +676,9 @@ int RS232_SendByte(int comport_number, unsigned char byte)
   return(0);
 }
 
+#if defined(__linux__) || defined(__FreeBSD__)
+#else
+
 int RS_SetCommMask(int comport_number,DWORD dwStoredFlags) {
     if (!SetCommMask(Cport[comport_number], dwStoredFlags))
         return 1;
@@ -705,6 +708,8 @@ int RS_GetCommStatus(int comport_number,LPDWORD lpErrors, LPCOMSTAT lpStat) {
     else
         return 0;
 }
+
+#endif
 
 int RS232_SendBuf(int comport_number, unsigned char *buf, int size)
 {
