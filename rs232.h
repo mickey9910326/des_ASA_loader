@@ -60,8 +60,8 @@ extern "C" {
 #endif
 
 #if defined(__linux__) || defined(__FreeBSD__)
-
-
+int RS_block_polling(int, unsigned char *, int);
+int RS_block_send(int, unsigned char *, int);
 #else
 int RS_SetCommMask(int comport_number,DWORD dwStoredFlags);
 int RS_WaitCommEvent(int comport_number,DWORD* dwCommEvent,LPOVERLAPPED lpOverlapped);

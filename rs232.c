@@ -33,6 +33,8 @@
 
 #include "rs232.h"
 
+#define RS_RX_SUCCESS 1
+#define RS_TX_SUCCESS 1
 
 #if defined(__linux__) || defined(__FreeBSD__)   /* Linux & FreeBSD */
 
@@ -193,7 +195,6 @@ http://pubs.opengroup.org/onlinepubs/7908799/xsh/termios.h.html
 
 http://man7.org/linux/man-pages/man3/termios.3.html
 */
-  printf("Opening %s\n",comports[comport_number]);
   Cport[comport_number] = open(comports[comport_number], O_RDWR | O_NOCTTY | O_NDELAY);
   if(Cport[comport_number]==-1)
   {
@@ -278,6 +279,21 @@ int RS232_PollComport(int comport_number, unsigned char *buf, int size)
   return(n);
 }
 
+int RS_block_polling(int comport_number, unsigned char *buf, int size)
+{
+  int left_sz = size;
+  int rec_sz = 0;
+  while(left_sz > 0) {
+    rec_sz = read(Cport[comport_number], buf+rec_sz, left_sz);
+    if(rec_sz < 0) {
+      printf("[Send] Error occure %d\n", errno);
+      return rec_sz;
+    }
+    left_sz -= rec_sz;
+  }
+  return RS_RX_SUCCESS;
+}
+
 
 int RS232_SendByte(int comport_number, unsigned char byte)
 {
@@ -314,6 +330,21 @@ int RS232_SendBuf(int comport_number, unsigned char *buf, int size)
   }
 
   return(0);
+}
+
+int RS_block_send(int comport_number, unsigned char *buf, int size)
+{
+  int left_sz = size;
+  int snd_sz = 0;
+  while(left_sz > 0) {
+    snd_sz = write(Cport[comport_number], buf+snd_sz, left_sz);
+    if(snd_sz < 0) {
+      printf("[Send] Error occure %d\n", errno);
+      return snd_sz;
+    }
+    left_sz -= snd_sz;
+  }
+  return RS_TX_SUCCESS;
 }
 
 
