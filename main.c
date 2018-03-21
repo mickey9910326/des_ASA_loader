@@ -118,21 +118,21 @@ int main(int argc, char **argv) {
 		    	break;
 
 			case 'v':
-				printf("cmd_ASA_loader version is %s \n",VERISON);
+				fprintf(stderr, "cmd_ASA_loader version is %s \n",VERISON);
 				return 0;
 		        break;
 
 	        case '?':
 				set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
-		        printf("Usage: cmd_ASA_loader [--port <com>] [--hex <file_name>]\n");
+		        fprintf(stderr, "Usage: cmd_ASA_loader [--port <com>] [--hex <file_name>]\n");
 				restore_cur_color();
-				printf("  --port <com>         Use desinated port <com>\n");
-				printf("  -p <com>             Same as --port <com>\n");
-				printf("  --hex <file_name>    Load file <file_name>\n");
-				printf("  -h <com>             Same as --hex <file_name>\n");
-				printf("  --help               Show this messege\n");
-				printf("  -?                   Same as --help\n");
-				printf("  --verbose            Show external messege for debug usage\n");
+				fprintf(stderr, "  --port <com>         Use desinated port <com>\n");
+				fprintf(stderr, "  -p <com>             Same as --port <com>\n");
+				fprintf(stderr, "  --hex <file_name>    Load file <file_name>\n");
+				fprintf(stderr, "  -h <com>             Same as --hex <file_name>\n");
+				fprintf(stderr, "  --help               Show this messege\n");
+				fprintf(stderr, "  -?                   Same as --help\n");
+				fprintf(stderr, "  --verbose            Show external messege for debug usage\n");
 				return 0;
 		        break;
 
@@ -174,14 +174,14 @@ int main(int argc, char **argv) {
 	if(!nouploading)
 	if(RS232_OpenComport(CPORT_NR, BDRATE, mode)) {
 		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
-		printf("Can not connect to COM %d.\n",CPORT_NR+1);
-		printf("Please check M128 is connected to USB and im program mode.");
+		fprintf(stderr, "Can not connect to COM %d.\n",CPORT_NR+1);
+		fprintf(stderr, "Please check M128 is connected to USB and im program mode.");
 		restore_cur_color();
 		exit(EXIT_FAILURE);
 	}
 
 	if(!nouploading){
-		printf("Try to connect ASA_M128 with COM %d ...\n", CPORT_NR+1);
+		fprintf(stderr, "Try to connect ASA_M128 with COM %d ...\n", CPORT_NR+1);
 		RS_SetCommMask(CPORT_NR,EV_RXCHAR);
 		RS232_SendBuf(CPORT_NR,start,12);
 		Sleep(100);
@@ -190,18 +190,18 @@ int main(int argc, char **argv) {
 
 
 #ifndef _WIN32
-		printf("Connected success! Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
+		fprintf(stderr, "Connected success! Start uploading %s to COM %d !\n", file_name, CPORT_NR+1);
 #else
 		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
-		printf("Connected success! Start uploading ");
+		fprintf(stderr, "Connected success! Start uploading ");
 		set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
-		printf("%s", file_name);
+		fprintf(stderr, "%s", file_name);
 		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
-		printf(" to ");
+		fprintf(stderr, " to ");
 		set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
-		printf("COM %d", CPORT_NR+1);
+		fprintf(stderr, "COM %d", CPORT_NR+1);
 		set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
-		printf(" !\n\n");
+		fprintf(stderr, " !\n\n");
 		restore_cur_color();
 #endif
 
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
 		}
 		if (error) {
 			set_cur_color(CONSOLE_FG_COLOR_RED, 0);
-			printf("plz press reset bottom, and check mode is program mode\n");
+			fprintf(stderr, "plz press reset bottom, and check mode is program mode\n");
 			restore_cur_color();
 			return 0;
 		}
@@ -232,8 +232,8 @@ int main(int argc, char **argv) {
 		}
 		if (do_verbose) {
 			print_hex_data(hex_data, data_count);
-			printf("chksum=%02X\n", chksum);
-			printf("--------------------------------------\n");
+			fprintf(stderr, "chksum=%02X\n", chksum);
+			fprintf(stderr, "--------------------------------------\n");
 		}
 	} while(data_count==256);
 	print_progressbar((float)times/(float)totaltimes);
@@ -249,19 +249,19 @@ int main(int argc, char **argv) {
 
 	if (error) {
 		set_cur_color(CONSOLE_FG_COLOR_RED, 0);
-		printf("WORNING : \n");
+		fprintf(stderr, "WORNING : \n");
 		set_cur_color(CONSOLE_BG_COLOR_BLUE, 0);
-		printf("  Don't press reset bottom in programming!\n");
-		printf("  Press the reset bottom and program again.\n");
+		fprintf(stderr, "  Don't press reset bottom in programming!\n");
+		fprintf(stderr, "  Press the reset bottom and program again.\n");
 		restore_cur_color();
 		return 0;
 	}
 	set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
-	printf("\n\nUpload ");
+	fprintf(stderr, "\n\nUpload ");
 	set_cur_color(CONSOLE_FG_COLOR_INST, CONSOLE_BG_COLOR_BLUE);
-	printf("%s", file_name);
+	fprintf(stderr, "%s", file_name);
 	set_cur_color(CONSOLE_FG_COLOR_GREEN, 0);
-	printf(" successful !\n");
+	fprintf(stderr, " successful !\n");
 	restore_cur_color();
     fclose(fp);
 
@@ -293,7 +293,7 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
             case DE_START:
                 c = fgetc(fp);
                 if ( c != ':' ) {
-                    printf("error\n");
+                    fprintf(stderr, "error\n");
                     status = 10;
 					error = 1;
                 } else {
@@ -352,9 +352,9 @@ uint8_t parse_hex_data_iter(FILE* fp, void* data_p, uint16_t* data_num, uint8_t*
 void print_hex_data(void* data_p, uint16_t data_count) {
 	set_cur_color(CONSOLE_FG_COLOR_BLUE, 0);
 	for (uint16_t j = 0; j < data_count; j++) {
-		printf("%02X ",((uint8_t*)data_p)[j]);
+		fprintf(stderr, "%02X ",((uint8_t*)data_p)[j]);
 		if ((j+1)%16==0) {
-			printf("\n");
+			fprintf(stderr, "\n");
 		}
 	}
 	restore_cur_color();
@@ -365,16 +365,16 @@ void print_progressbar(float percentage) {
     int lpad = (int) (percentage * PBWIDTH);
     int rpad = PBWIDTH - lpad;
 
-	printf("\r [");
+	fprintf(stderr, "\r [");
 	set_cur_color(0, CONSOLE_BG_COLOR_GREEN | CONSOLE_FG_COLOR_INST);
 	if(!is_use_color)
-		printf("%.*s", lpad, PBSTR);
+		fprintf(stderr, "%.*s", lpad, PBSTR);
 	else
-		printf("%.*s", lpad, PBSTR2);
+		fprintf(stderr, "%.*s", lpad, PBSTR2);
 	set_cur_color(0, CONSOLE_BG_COLOR_BLUE	| CONSOLE_BG_COLOR_INST);
-	printf("%*s", rpad, "");
+	fprintf(stderr, "%*s", rpad, "");
 	restore_cur_color();
-	printf("]%3d%%", val);
+	fprintf(stderr, "]%3d%%", val);
 	fflush(stdout);
 }
 
